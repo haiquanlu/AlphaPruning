@@ -89,13 +89,11 @@ def net_esd_estimator(
         if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
             matrix = m.weight.data.clone().cpu()
             # i have checked that the multiplication won't affect the weights value
-            #print("before", torch.max(m.weight.data))
             # normalization and tranpose Conv2d
             if isinstance(m, nn.Conv2d):
                 matrix = torch.flatten(matrix, start_dim=2) * math.sqrt(conv_norm)
                 matrix = matrix.transpose(1, 2).transpose(0, 1)
-            #print("after weight data",torch.max(m.weight.data))
-            #print("after matrix ",torch.max(matrix))
+
             matrix = matrix.to(torch.float32)
             eigs = torch.square(torch.linalg.svdvals(matrix).flatten())
             # ascending order 
@@ -104,16 +102,13 @@ def net_esd_estimator(
             fnorm = torch.sum(eigs).item()
             
             if filter_zeros:
-                #print(f"{name} Filter Zero")
                 nz_eigs = eigs[eigs > EVALS_THRESH]
                 N = len(nz_eigs)
                 # somethines N may equal 0, if that happens, we don't filter eigs
                 if N == 0:
-                    #print(f"{name} No non-zero eigs, use original total eigs")
                     nz_eigs = eigs
                     N = len(nz_eigs)
             else:
-                #print(f"{name} Skip Filter Zero")
                 nz_eigs = eigs
                 N = len(nz_eigs)
             log_nz_eigs  = torch.log(nz_eigs)
