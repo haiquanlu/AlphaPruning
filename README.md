@@ -100,6 +100,9 @@ We provide a quick overview of the arguments:
 
 We also provide the code to evaluate LoRA adapter on WikiText validation dataset in [lora_ft/evaluate_ppl.py](lora_ft/evaluate_ppl.py). For zero shot evaluation, additionally pass the `--eval_zero_shot` argument.
 
+## Image Classifiers
+For pruning image classifiers, see directory [image_classifiers](image_classifiers) for details, where we provide the code for pruning ConvNeXt and ViT.
+
 ## Citation
 We would appreciate it if you could cite the following paper if you found the repository useful for your work:
 
