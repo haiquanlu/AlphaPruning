@@ -15,6 +15,7 @@ reduce LLM model size. Existing LLM pruning strategies typically assign uniform 
 ## Update
 - [x] (12.7.2024) We released the code for AlphaPruning.
 - [x] (12.7.2024) Add code for [LoRA fine-tuning](lora_ft).
+- [x] (12.28.2024) Add code for [Image_classifiers](image_classifiers).
 
 ## Installation
 Environment setup instructions can be found in [INSTALL.md](INSTALL.md).

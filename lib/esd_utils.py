@@ -1,26 +1,38 @@
-import copy
-
 import torch
 import torch.nn as nn
 from operator import itemgetter
 import numpy as np
 import math
-import tqdm
 import weightwatcher as ww
+from transformers import AutoModelForCausalLM
+
+def get_llm(model_name, cache_dir="llm_weights", device="cpu"):
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype=torch.float16,
+        cache_dir=cache_dir,
+        low_cpu_mem_usage=True
+    )
+    model.to(device)  # Move model to the specified device
+    model.seqlen = 2048
+    return model
 
 
-def get_esd_metrics(args, model, metric):
-    if "opt" in args.model:
+def get_esd_metrics(model_name, metric_name, cache_dir="llm_weights"):
+    model = get_llm(model_name, cache_dir)
+    model.eval()
+
+    if "opt" in model_name:
         blocks = model.model.decoder.layers    
     else:
         blocks = model.model.layers
     
-    if args.metric == 'alpha_mid':
+    if metric_name == 'alpha_mid':
         metrics = net_esd_estimator(blocks,
             fix_fingers='xmin_mid'
         )
         metrics = metrics['alpha']
-    elif args.metric == 'alpha_peak':
+    elif metric_name == 'alpha_peak':
         metrics = net_esd_estimator(blocks,
             fix_fingers='xmin_peak'
         )
@@ -29,27 +41,29 @@ def get_esd_metrics(args, model, metric):
         watcher = ww.WeightWatcher(model=blocks)
         details = watcher.analyze(mp_fit=True, randomize=True)
         
-        if args.WW_metric == 'entropy':
+        if metric_name == 'entropy':
             metrics = np.array(details.entropy)
-        elif args.WW_metric == 'alpha':
+        elif metric_name == 'alpha':
             metrics = np.array(details.alpha)
-        elif args.WW_metric == 'mp_softrank':
+        elif metric_name == 'mp_softrank':
             metrics = np.array(details.mp_softrank)
-        elif args.WW_metric == 'stable_rank':
+        elif metric_name == 'stable_rank':
             metrics = np.array(details.stable_rank)
-        elif args.WW_metric == 'random_distance':
+        elif metric_name == 'random_distance':
             metrics = np.array(details.rand_distance)
-        elif args.WW_metric == 'log_norm':
+        elif metric_name == 'log_norm':
             metrics = np.array(details.log_norm)
-        elif args.WW_metric == 'log_spectral_norm':
+        elif metric_name == 'log_spectral_norm':
             metrics = np.array(details.log_spectral_norm)
-        elif args.WW_metric == 'alpha_weighted':
+        elif metric_name == 'alpha_weighted':
             metrics = np.array(details.alpha_weighted)
-        elif args.WW_metric == 'log_alpha_norm':
+        elif metric_name == 'log_alpha_norm':
             metrics = np.array(details.log_alpha_norm)
-        elif args.WW_metric == 'spectral_norm':
+        elif metric_name == 'spectral_norm':
             metrics = np.array(details.spectral_norm)
     
+    torch.cuda.empty_cache()
+
     return metrics    
 
 def net_esd_estimator(

@@ -2,15 +2,11 @@ import argparse
 import os
 import numpy as np
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, LlamaConfig, LlamaTokenizer
-from collections import defaultdict
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from lib.prune import prune_wanda, prune_sparsegpt, prune_magnitude, prune_wanda_ww, prune_sparsegpt_ww, prune_magnitude_ww, check_sparsity 
 from lib.eval import eval_ppl, eval_zero_shot
 from lib.esd_utils import get_esd_metrics
-import sys
-import random
-import datasets
 
 
 def get_llm(model, cache_dir="llm_weights"):
@@ -54,6 +50,13 @@ def main():
     np.random.seed(args.seed)
     torch.random.manual_seed(args.seed)
     
+    # get the layerwise metric values of the model
+    if "ww" in args.prune_method and not os.path.exists(f"{args.ww_metric_cache}/{args.ww_metric}.npy"):
+        metric_values = get_esd_metrics(args.model, args.ww_metric, args.cache_dir)
+        np.save(f"{args.ww_metric_cache}/{args.ww_metric}.npy", metric_values)
+
+
+
     model_name = args.model.split("/")[-1]
     model = get_llm(args.model, args.cache_dir)
     model.eval()
@@ -66,17 +69,10 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=False)
     
     device = torch.device("cuda:0")
-    if "30b" in args.model or "65b" in args.model or "70b" in args.model in args.model: # for 30b and 65b we use device_map to load onto multiple A6000 GPUs, thus the processing here.
+    if "30b" in args.model or "65b" in args.model or "70b" in args.model in args.model: # for 30b or 65b or 70b, we use device_map to load onto multiple GPUs, thus the processing here.
         device = model.hf_device_map["lm_head"]
     print("use device ", device)
 
-    
-    # get the layerwise metric values of the model
-    if "ww" in args.prune_method and not os.path.exists(f"{args.ww_metric_cache}/{args.ww_metric}.npy"):
-        metric_values = get_esd_metrics(args, model, args.ww_metric)
-        np.save(f"{args.ww_metric_cache}/{args.ww_metric}.npy", metric_values)
-        
-        
     if args.sparsity_ratio != 0:
         print("pruning starts")
         # Uniform pruning
